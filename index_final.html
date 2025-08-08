@@ -1,0 +1,188 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>韓文發音練習遊戲</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: auto;
+      text-align: center;
+      padding: 30px 15px;
+    }
+    #logo {
+      width: 150px;
+      max-width: 80%;
+      margin-bottom: 10px;
+    }
+    #game-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    #question-number {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    button {
+      margin: 10px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      display: block;
+      width: 150px;
+    }
+    #question-selector {
+      margin: 20px 0;
+    }
+    .selector-btn {
+      display: inline-block;
+      width: 36px;
+      height: 36px;
+      margin: 5px;
+      padding: 0;
+      font-size: 16px;
+      border-radius: 50%;
+      background-color: #f0f0f0;
+      color: #333;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .selector-btn:hover {
+      background-color: #4a90e2;
+      color: #fff;
+    }
+    .hidden {
+      visibility: hidden;
+    }
+    audio {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px 0;
+    }
+    .note {
+      font-size: 14px;
+      color: #888;
+      margin: 2px 0;
+    }
+    .question-text {
+      min-height: 2em;
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    .keywords {
+      font-size: 18px;
+      color: #333;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <img id="logo" src="logo.png" alt="Logo">
+  <div id="game-title">韓文發音練習遊戲</div>
+  <div id="question-number">第 <span id="current-number">1</span> 題 / 共 10 題</div>
+  <div id="question-selector"><strong>題目選擇：</strong></div>
+
+  <div id="question-text" class="question-text"></div>
+
+  <div style="margin-top: 20px; font-size: 16px; color: #555;">進階練習：看著關鍵字，試著說出句子</div>
+  <div id="question-controls">
+    <audio id="audio-player" controls></audio>
+    <button id="start-btn">開始錄音</button>
+    <button id="stop-btn" disabled>停止錄音</button>
+    <audio id="user-audio" controls class="hidden"></audio>
+  </div>
+
+  <div style="margin-top: 20px; font-size: 16px; color: #555;">進階練習：看著關鍵字，試著說出句子</div>
+  <div id="keywords" class="keywords"></div>
+
+  <script>
+    const questions = [
+      { audio: "audio/1.mp3", text: "한글을 읽을 줄 몰라요.", keywords: "한글,읽다" },
+      { audio: "audio/2.mp3", text: "인터넷으로 표를 예매할 줄 알아요.", keywords: "인터넷,표,예매하다" },
+      { audio: "audio/3.mp3", text: "자전거를 탈 줄 몰라요.", keywords: "자전거,타다" },
+      { audio: "audio/4.mp3", text: "춤을 출 줄 몰라요.", keywords: "춤,추다" },
+      { audio: "audio/5.mp3", text: "복사기가 고장 났어요. 고칠 줄 몰라요.", keywords: "복사기,고장,고치다" },
+      { audio: "audio/6.mp3", text: "홈페이지를 만들 줄 알아요.", keywords: "홈페이지,만들다" },
+      { audio: "audio/7.mp3", text: "한국어를 할 줄 알지만 잘 못해요.", keywords: "한국어,잘 못하다" },
+      { audio: "audio/8.mp3", text: "테니스를 칠 줄 아세요?", keywords: "테니스" },
+      { audio: "audio/9.mp3", text: "그럼 제가 가르쳐 드릴까요?", keywords: "가르쳐 드리다" },
+      { audio: "audio/10.mp3", text: "시간이 나면 한번 배워 보고 싶어요.", keywords: "시간,나다,하번 , 배워 보다" }
+    ];
+
+    let currentQuestion = 0;
+    const questionText = document.getElementById("question-text");
+    const keywordsDiv = document.getElementById("keywords");
+    const currentNumberSpan = document.getElementById("current-number");
+    const audioPlayer = document.getElementById("audio-player");
+    const userAudio = document.getElementById("user-audio");
+    const startBtn = document.getElementById("start-btn");
+    const stopBtn = document.getElementById("stop-btn");
+
+    function showQuestion() {
+      const q = questions[currentQuestion];
+      questionText.textContent = q.text;
+      keywordsDiv.textContent = q.keywords;
+      currentNumberSpan.textContent = currentQuestion + 1;
+      audioPlayer.src = q.audio;
+      userAudio.classList.add("hidden");
+      userAudio.src = "";
+    }
+
+    showQuestion();
+
+    // 題目選擇按鈕
+    const selector = document.getElementById("question-selector");
+    questions.forEach((_, idx) => {
+      const btn = document.createElement("button");
+      btn.textContent = idx + 1;
+      btn.className = "selector-btn";
+      btn.onclick = () => {
+        stopRecordingIfNeeded();
+        currentQuestion = idx;
+        showQuestion();
+      };
+      selector.appendChild(btn);
+    });
+
+    // 錄音功能
+    let mediaRecorder, audioChunks = [];
+
+    startBtn.onclick = async () => {
+      questionText.style.visibility = "hidden";
+      audioChunks = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        userAudio.src = URL.createObjectURL(blob);
+        userAudio.classList.remove("hidden");
+      };
+      mediaRecorder.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
+
+    stopBtn.onclick = () => {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+      questionText.style.visibility = "visible";
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+
+    function stopRecordingIfNeeded() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+    }
+  </script>
+</body>
+</html>
