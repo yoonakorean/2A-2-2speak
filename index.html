@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>韓文發音練習遊戲</title>
+  <title>2A-2 韓文跟讀練習</title>
   <style>
     body {
       font-family: sans-serif;
@@ -82,22 +82,20 @@
 </head>
 <body>
   <img id="logo" src="logo.png" alt="Logo">
-  <div id="game-title">韓文發音練習遊戲</div>
+  <div id="game-title">2A-2 韓文跟讀練習</div>
   <div id="question-number">第 <span id="current-number">1</span> 題 / 共 10 題</div>
   <div id="question-selector"><strong>題目選擇：</strong></div>
 
   <div id="question-text" class="question-text"></div>
 
   <div style="margin-top: 20px; font-size: 16px; color: #555;">進階練習：看著關鍵字，試著說出句子</div>
+  <div id="keywords" class="keywords"></div>
   <div id="question-controls">
     <audio id="audio-player" controls></audio>
     <button id="start-btn">開始錄音</button>
     <button id="stop-btn" disabled>停止錄音</button>
     <audio id="user-audio" controls class="hidden"></audio>
   </div>
-
-  <div style="margin-top: 20px; font-size: 16px; color: #555;">進階練習：看著關鍵字，試著說出句子</div>
-  <div id="keywords" class="keywords"></div>
 
   <script>
     const questions = [
