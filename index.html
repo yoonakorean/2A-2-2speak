@@ -26,13 +26,6 @@
       font-size: 18px;
       margin-bottom: 10px;
     }
-    button {
-      margin: 10px auto;
-      padding: 10px 20px;
-      font-size: 16px;
-      display: block;
-      width: 150px;
-    }
     #question-selector {
       margin: 20px 0;
     }
@@ -78,18 +71,15 @@
       margin: 10px 0;
     }
 
-    /* ⬇⬇⬇ 錄音控制按鈕橫向排列 ⬇⬇⬇ */
     #question-controls {
       display: flex;
       justify-content: center;
-      align-items: center;
       gap: 10px;
       flex-wrap: wrap;
     }
     #question-controls button {
       margin: 0;
       width: auto;
-      flex: 1 1 120px;
     }
   </style>
 </head>
@@ -104,7 +94,6 @@
   <div style="margin-top: 20px; font-size: 16px; color: #555;">進階練習：看著關鍵字，試著說出句子</div>
   <div id="keywords" class="keywords"></div>
 
-  <!-- 高手模式區 -->
   <button id="toggle-pro-mode">高手模式</button>
   <div style="font-size: 14px; color: #888;">進入高手模式後 題目與關鍵字都會隱藏</div>
 
@@ -114,6 +103,9 @@
     <button id="stop-btn" disabled>停止錄音</button>
     <audio id="user-audio" controls class="hidden"></audio>
   </div>
+
+  <!-- 引入 recorder.js -->
+  <script src="recorder.js"></script>
 
   <script>
     const questions = [
@@ -131,6 +123,7 @@
 
     let currentQuestion = 0;
     let isProMode = false;
+    let recorder, audioContext, stream;
 
     const questionText = document.getElementById("question-text");
     const keywordsDiv = document.getElementById("keywords");
@@ -150,7 +143,6 @@
       userAudio.classList.add("hidden");
       userAudio.src = "";
 
-      // 根據高手模式狀態切換顯示
       questionText.style.visibility = isProMode ? "hidden" : "visible";
       keywordsDiv.style.visibility = isProMode ? "hidden" : "visible";
     }
@@ -179,38 +171,41 @@
       proModeBtn.textContent = isProMode ? "恢復題目顯示" : "高手模式";
     };
 
-    // 錄音功能
-    let mediaRecorder, audioChunks = [];
-
+    // 錄音開始
     startBtn.onclick = async () => {
       questionText.style.visibility = "hidden";
-      audioChunks = [];
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: "audio/webm" });
-        userAudio.src = URL.createObjectURL(blob);
-        userAudio.classList.remove("hidden");
-      };
-      mediaRecorder.start();
+
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const input = audioContext.createMediaStreamSource(stream);
+
+      recorder = new Recorder(input, { numChannels: 1 });
+      recorder.record();
+
       startBtn.disabled = true;
       stopBtn.disabled = false;
     };
 
+    // 錄音停止
     stopBtn.onclick = () => {
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-      }
-      // 根據高手模式狀態決定是否顯示題目
+      recorder.stop();
+
+      stream.getAudioTracks()[0].stop();
+
+      recorder.exportWAV(blob => {
+        userAudio.src = URL.createObjectURL(blob);
+        userAudio.classList.remove("hidden");
+      });
+
       questionText.style.visibility = isProMode ? "hidden" : "visible";
       startBtn.disabled = false;
       stopBtn.disabled = true;
     };
 
     function stopRecordingIfNeeded() {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
+      if (recorder && recorder.recording) {
+        recorder.stop();
+        stream.getAudioTracks()[0].stop();
         startBtn.disabled = false;
         stopBtn.disabled = true;
       }
